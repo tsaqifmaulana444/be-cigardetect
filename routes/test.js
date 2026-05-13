@@ -4,28 +4,36 @@ import { authMiddleware } from "../middleware.js";
 
 const router = express.Router();
 
-function classifyCategory(value) {
-  if (value < 200)  return "Non Perokok";
-  if (value <= 500) return "Perokok Ringan";
-  return "Perokok Berat";
-}
-
 // POST /api/test — dari ESP32, tanpa auth
 router.post("/", async (req, res) => {
-  const { id_siswa, nilai_sensor } = req.body;
 
-  if (!id_siswa || nilai_sensor === undefined)
-    return res.status(400).json({ message: "id_siswa dan nilai_sensor wajib diisi." });
+  const { id_siswa, nilai_sensor, kategori } = req.body;
 
-  const siswa = await pool.query("SELECT id FROM siswa WHERE id = $1", [id_siswa]);
-  if (!siswa.rows[0]) return res.status(404).json({ message: "Siswa tidak ditemukan." });
+  if (!id_siswa || nilai_sensor === undefined || !kategori) {
+    return res.status(400).json({
+      message: "id_siswa, nilai_sensor, dan kategori wajib diisi."
+    });
+  }
 
-  const kategori = classifyCategory(Number(nilai_sensor));
+  const siswa = await pool.query(
+    "SELECT id FROM siswa WHERE id = $1",
+    [id_siswa]
+  );
+
+  if (!siswa.rows[0]) {
+    return res.status(404).json({
+      message: "Siswa tidak ditemukan."
+    });
+  }
 
   const result = await pool.query(
-    "INSERT INTO hasil_tes (id_siswa, nilai_sensor, kategori) VALUES ($1, $2, $3) RETURNING *",
+    `INSERT INTO hasil_tes 
+    (id_siswa, nilai_sensor, kategori) 
+    VALUES ($1, $2, $3)
+    RETURNING *`,
     [id_siswa, nilai_sensor, kategori]
   );
+
   res.status(201).json(result.rows[0]);
 });
 
